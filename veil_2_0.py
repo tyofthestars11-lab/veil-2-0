@@ -10,6 +10,8 @@ import math
 # keyboard + touch screen + Bluetooth/Xbox controller.
 # phi woven in as mechanics, not decoration:
 #   - SKILLS is the Phi Strike: damage grows by Fibonacci steps
+#   - LEAP (L / J key or the LEAP button): the Warden's counter misses entirely,
+#     and the next Phi Strike deals x phi damage
 #   - Victory pays a golden-ratio bonus: 120 gold -> 194 (x phi)
 #   - The lair floor carries the golden spiral
 # ---------------------------------------------------------
@@ -133,6 +135,11 @@ class GameEngine:
         # Phi Strike counter: each SKILLS use climbs one Fibonacci step
         self.phi_step = 5
 
+        # Leap state: dodge = the Warden's next counter misses entirely;
+        # charged = the next Phi Strike deals x phi damage (one leap charges one strike)
+        self.leap_dodge = False
+        self.leap_charged = False
+
         # UI Selection Index
         self.battle_selection = 0
         self.battle_options = ["ATTACK", "SKILLS", "ITEM (Potion)", "DEFEND"]
@@ -178,8 +185,12 @@ class GameEngine:
             dmg = self.player_attack + step + random.randint(0, 4)
             if self.godmode:
                 dmg = int(dmg * PHI * PHI)
+            charged = self.leap_charged
+            if charged:
+                dmg = int(dmg * PHI)
+                self.leap_charged = False
             self.enemy_hp -= dmg
-            self.log_message(f"Phi Strike (fib {step}) deals {dmg} damage!")
+            self.log_message(f"Phi Strike (fib {step}) deals {dmg} damage!" + (" Leap x phi!" if charged else ""))
         elif action == "ITEM (Potion)":
             if self.player_potions > 0:
                 self.player_hp = min(self.player_max_hp, self.player_hp + 40)
@@ -200,7 +211,16 @@ class GameEngine:
             self.state = STATE_VICTORY
             return
 
-        # Enemy counter-attack - GODMODE absorbs every blow
+        # Enemy counter-attack
+        self.resolve_enemy_counter(action)
+
+    def resolve_enemy_counter(self, action):
+        # Leap: the Warden's blow misses entirely
+        if self.leap_dodge:
+            self.leap_dodge = False
+            self.log_message("The Warden's blow whistles past - your leap carries you clear!")
+            return
+        # GODMODE absorbs every blow
         if self.godmode:
             self.log_message("GODMODE absorbs the Warden's blow!")
             return
@@ -214,6 +234,13 @@ class GameEngine:
         if self.player_hp <= 0:
             self.player_hp = 0
             self.state = STATE_GAME_OVER
+
+    def leap_turn(self):
+        """LEAP battle action: golden arc - dodge the counter, charge the next Phi Strike x phi."""
+        self.leap_dodge = True
+        self.leap_charged = True
+        self.log_message("You leap - golden arc! The next Phi Strike burns x phi.")
+        self.resolve_enemy_counter("LEAP")
 
 # ---------------------------------------------------------
 # 4. INPUT - KEYBOARD + TOUCH + BLUETOOTH / XBOX PAD
@@ -304,6 +331,7 @@ pad_nav = PadNav()
 battle_option_rects = []
 restart_rect = pygame.Rect(SCREEN_WIDTH//2 - 130, 320, 260, 56)
 GOD_RECT = pygame.Rect(SCREEN_WIDTH - 152, 42, 140, 40)
+LEAP_RECT = pygame.Rect(SCREEN_WIDTH - 152, 90, 140, 40)
 
 def draw_bar(x, y, w, h, value, maximum, color):
     pygame.draw.rect(screen, (10, 10, 10), (x - 2, y - 2, w + 4, h + 4))
@@ -352,6 +380,8 @@ async def main():
                     game.godmode = not game.godmode
                 elif game.state == STATE_EXPLORE:
                     touch_press(fx, fy)
+                elif game.state == STATE_BATTLE and LEAP_RECT.collidepoint(int(fx), int(fy)):
+                    game.leap_turn()
                 elif game.state == STATE_BATTLE:
                     for i, r in enumerate(battle_option_rects):
                         if r.collidepoint(int(fx), int(fy)):
@@ -371,6 +401,8 @@ async def main():
                     game.godmode = not game.godmode
                 elif game.state == STATE_EXPLORE:
                     touch_press(mx, my)
+                elif game.state == STATE_BATTLE and LEAP_RECT.collidepoint(mx, my):
+                    game.leap_turn()
                 elif game.state == STATE_BATTLE:
                     for i, r in enumerate(battle_option_rects):
                         if r.collidepoint(mx, my):
@@ -400,6 +432,8 @@ async def main():
                     game.battle_selection = (game.battle_selection - 1) % len(game.battle_options)
                 elif event.key == pygame.K_DOWN:
                     game.battle_selection = (game.battle_selection + 1) % len(game.battle_options)
+                elif event.key == pygame.K_l or event.key == pygame.K_j:
+                    game.leap_turn()
                 elif event.key == pygame.K_RETURN or event.key == pygame.K_SPACE:
                     game.execute_battle_turn()
 
@@ -531,6 +565,10 @@ async def main():
             pygame.draw.rect(screen, COLOR_PHI_GOLD if game.godmode else COLOR_UI_BORDER, GOD_RECT, border_radius=8)
             gt = font_game.render("GOD", True, COLOR_UI_BG if game.godmode else COLOR_TEXT)
             screen.blit(gt, gt.get_rect(center=GOD_RECT.center))
+
+            pygame.draw.rect(screen, COLOR_PHI_GOLD if game.leap_charged else COLOR_UI_BORDER, LEAP_RECT, border_radius=8)
+            lt = font_game.render("LEAP x phi!" if game.leap_charged else "LEAP (L)", True, COLOR_PHI_GOLD if game.leap_charged else COLOR_TEXT)
+            screen.blit(lt, lt.get_rect(center=LEAP_RECT.center))
 
             # Combat log
             for j, line in enumerate(game.combat_log):
