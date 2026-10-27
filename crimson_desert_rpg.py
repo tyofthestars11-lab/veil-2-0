@@ -1,3 +1,4 @@
+import asyncio
 import pygame
 import random
 import sys
@@ -323,230 +324,236 @@ def draw_golden_spiral(rect):
 # ---------------------------------------------------------
 # 5. GAME RUN ENGINE LOOP
 # ---------------------------------------------------------
-game = GameEngine()
+async def main():
+    battle_option_rects = []
+    game = GameEngine()
 
-while True:
-    dt = clock.tick(60)
+    while True:
+        dt = clock.tick(60)
+        await asyncio.sleep(0)
 
-    # --- EVENT PROCESSING ---
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            pygame.quit()
-            sys.exit()
+        # --- EVENT PROCESSING ---
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
 
-        # Controller hot-plug (Bluetooth pads connect mid-game)
-        if event.type == pygame.JOYDEVICEADDED:
-            refresh_joysticks()
-        if event.type == pygame.JOYDEVICEREMOVED:
-            joysticks.pop(event.instance_id, None)
+            # Controller hot-plug (Bluetooth pads connect mid-game)
+            if event.type == pygame.JOYDEVICEADDED:
+                refresh_joysticks()
+            if event.type == pygame.JOYDEVICEREMOVED:
+                joysticks.pop(event.instance_id, None)
 
-        # --- Touch screen ---
-        if event.type == pygame.FINGERDOWN:
-            fx, fy = event.x * SCREEN_WIDTH, event.y * SCREEN_HEIGHT
-            finger_points[event.finger_id] = (fx, fy)
-            if game.state in (STATE_EXPLORE, STATE_BATTLE) and GOD_RECT.collidepoint(int(fx), int(fy)):
-                game.godmode = not game.godmode
-            elif game.state == STATE_EXPLORE:
-                touch_press(fx, fy)
-            elif game.state == STATE_BATTLE:
-                for i, r in enumerate(battle_option_rects):
-                    if r.collidepoint(int(fx), int(fy)):
-                        game.battle_selection = i
-                        game.execute_battle_turn()
-                        break
-            elif game.state in (STATE_GAME_OVER, STATE_VICTORY):
-                if restart_rect.collidepoint(int(fx), int(fy)):
+            # --- Touch screen ---
+            if event.type == pygame.FINGERDOWN:
+                fx, fy = event.x * SCREEN_WIDTH, event.y * SCREEN_HEIGHT
+                finger_points[event.finger_id] = (fx, fy)
+                if game.state in (STATE_EXPLORE, STATE_BATTLE) and GOD_RECT.collidepoint(int(fx), int(fy)):
+                    game.godmode = not game.godmode
+                elif game.state == STATE_EXPLORE:
+                    touch_press(fx, fy)
+                elif game.state == STATE_BATTLE:
+                    for i, r in enumerate(battle_option_rects):
+                        if r.collidepoint(int(fx), int(fy)):
+                            game.battle_selection = i
+                            game.execute_battle_turn()
+                            break
+                elif game.state in (STATE_GAME_OVER, STATE_VICTORY):
+                    if restart_rect.collidepoint(int(fx), int(fy)):
+                        game = GameEngine()
+            if event.type == pygame.FINGERUP:
+                fx, fy = event.x * SCREEN_WIDTH, event.y * SCREEN_HEIGHT
+                finger_points.pop(event.finger_id, None)
+                touch_release(fx, fy)
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                mx, my = event.pos
+                if game.state in (STATE_EXPLORE, STATE_BATTLE) and GOD_RECT.collidepoint(mx, my):
+                    game.godmode = not game.godmode
+                elif game.state == STATE_EXPLORE:
+                    touch_press(mx, my)
+                elif game.state == STATE_BATTLE:
+                    for i, r in enumerate(battle_option_rects):
+                        if r.collidepoint(mx, my):
+                            game.battle_selection = i
+                            game.execute_battle_turn()
+                            break
+                elif game.state in (STATE_GAME_OVER, STATE_VICTORY):
+                    if restart_rect.collidepoint(mx, my):
+                        game = GameEngine()
+            if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                touch_release(*event.pos)
+
+            # --- Controller buttons: A (0) confirms, Start (7) restarts ---
+            if event.type == pygame.JOYBUTTONDOWN:
+                if event.button == 3:
+                    game.godmode = not game.godmode
+                elif game.state == STATE_BATTLE and event.button == 0:
+                    game.execute_battle_turn()
+                elif game.state in (STATE_GAME_OVER, STATE_VICTORY) and event.button in (0, 7):
                     game = GameEngine()
-        if event.type == pygame.FINGERUP:
-            fx, fy = event.x * SCREEN_WIDTH, event.y * SCREEN_HEIGHT
-            finger_points.pop(event.finger_id, None)
-            touch_release(fx, fy)
-        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            mx, my = event.pos
-            if game.state in (STATE_EXPLORE, STATE_BATTLE) and GOD_RECT.collidepoint(mx, my):
-                game.godmode = not game.godmode
-            elif game.state == STATE_EXPLORE:
-                touch_press(mx, my)
-            elif game.state == STATE_BATTLE:
-                for i, r in enumerate(battle_option_rects):
-                    if r.collidepoint(mx, my):
-                        game.battle_selection = i
-                        game.execute_battle_turn()
-                        break
-            elif game.state in (STATE_GAME_OVER, STATE_VICTORY):
-                if restart_rect.collidepoint(mx, my):
-                    game = GameEngine()
-        if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
-            touch_release(*event.pos)
 
-        # --- Controller buttons: A (0) confirms, Start (7) restarts ---
-        if event.type == pygame.JOYBUTTONDOWN:
-            if event.button == 3:
+            # --- Keyboard ---
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_g:
                 game.godmode = not game.godmode
-            elif game.state == STATE_BATTLE and event.button == 0:
-                game.execute_battle_turn()
-            elif game.state in (STATE_GAME_OVER, STATE_VICTORY) and event.button in (0, 7):
-                game = GameEngine()
+            if game.state == STATE_BATTLE and event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_UP:
+                    game.battle_selection = (game.battle_selection - 1) % len(game.battle_options)
+                elif event.key == pygame.K_DOWN:
+                    game.battle_selection = (game.battle_selection + 1) % len(game.battle_options)
+                elif event.key == pygame.K_RETURN or event.key == pygame.K_SPACE:
+                    game.execute_battle_turn()
 
-        # --- Keyboard ---
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_g:
-            game.godmode = not game.godmode
-        if game.state == STATE_BATTLE and event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_UP:
+            elif game.state in [STATE_GAME_OVER, STATE_VICTORY] and event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN:
+                    game = GameEngine() # Restart engine
+
+        # --- Controller menu navigation (battle) ---
+        if game.state == STATE_BATTLE:
+            _, ny = pad_nav.poll()
+            if ny < 0:
                 game.battle_selection = (game.battle_selection - 1) % len(game.battle_options)
-            elif event.key == pygame.K_DOWN:
+            elif ny > 0:
                 game.battle_selection = (game.battle_selection + 1) % len(game.battle_options)
-            elif event.key == pygame.K_RETURN or event.key == pygame.K_SPACE:
-                game.execute_battle_turn()
 
-        elif game.state in [STATE_GAME_OVER, STATE_VICTORY] and event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_RETURN:
-                game = GameEngine() # Restart engine
+        # --- STATE SIMULATION ENGINE ---
+        if game.state == STATE_EXPLORE:
+            mx, my = get_move_input()
+            dx = mx * game.player_speed
+            dy = my * game.player_speed
 
-    # --- Controller menu navigation (battle) ---
-    if game.state == STATE_BATTLE:
-        _, ny = pad_nav.poll()
-        if ny < 0:
-            game.battle_selection = (game.battle_selection - 1) % len(game.battle_options)
-        elif ny > 0:
-            game.battle_selection = (game.battle_selection + 1) % len(game.battle_options)
-
-    # --- STATE SIMULATION ENGINE ---
-    if game.state == STATE_EXPLORE:
-        mx, my = get_move_input()
-        dx = mx * game.player_speed
-        dy = my * game.player_speed
-
-        # Test Boundaries & Collisions
-        new_rect = pygame.Rect(game.player_x + dx, game.player_y + dy, 32, 40)
-        collided = False
-        if new_rect.left < 0 or new_rect.right > SCREEN_WIDTH or new_rect.top < 0 or new_rect.bottom > SCREEN_HEIGHT:
-            collided = True
-
-        for obs_type, obs_rect in game.obstacles:
-            if new_rect.colliderect(obs_rect):
+            # Test Boundaries & Collisions
+            new_rect = pygame.Rect(game.player_x + dx, game.player_y + dy, 32, 40)
+            collided = False
+            if new_rect.left < 0 or new_rect.right > SCREEN_WIDTH or new_rect.top < 0 or new_rect.bottom > SCREEN_HEIGHT:
                 collided = True
-                break
 
-        if not collided:
-            game.player_x += dx
-            game.player_y += dy
+            for obs_type, obs_rect in game.obstacles:
+                if new_rect.colliderect(obs_rect):
+                    collided = True
+                    break
 
-        # Trigger Lair Boss Arena
-        if new_rect.colliderect(game.trigger_zone):
-            game.state = STATE_BATTLE
+            if not collided:
+                game.player_x += dx
+                game.player_y += dy
 
-    # --- RENDERING ENGINE ---
-    screen.fill(COLOR_SAND)
+            # Trigger Lair Boss Arena
+            if new_rect.colliderect(game.trigger_zone):
+                game.state = STATE_BATTLE
 
-    if game.state == STATE_EXPLORE:
-        # Draw background ground grid detailing
-        for r in range(game.map_height):
-            for c in range(game.map_width):
-                if (r + c) % 2 == 0:
-                    pygame.draw.rect(screen, COLOR_SAND_DARK, (c*TILE_SIZE, r*TILE_SIZE, TILE_SIZE, TILE_SIZE), 1)
+        # --- RENDERING ENGINE ---
+        screen.fill(COLOR_SAND)
 
-        # Draw Objects
-        for obs_type, obs_rect in game.obstacles:
-            if obs_type == 'cactus':
-                screen.blit(cactus_img, obs_rect.topleft)
+        if game.state == STATE_EXPLORE:
+            # Draw background ground grid detailing
+            for r in range(game.map_height):
+                for c in range(game.map_width):
+                    if (r + c) % 2 == 0:
+                        pygame.draw.rect(screen, COLOR_SAND_DARK, (c*TILE_SIZE, r*TILE_SIZE, TILE_SIZE, TILE_SIZE), 1)
+
+            # Draw Objects
+            for obs_type, obs_rect in game.obstacles:
+                if obs_type == 'cactus':
+                    screen.blit(cactus_img, obs_rect.topleft)
+                else:
+                    screen.blit(ruin_img, obs_rect.topleft)
+
+            # Draw Lair entrance warning zone + golden spiral floor
+            pygame.draw.rect(screen, COLOR_ROCK, game.trigger_zone, 3)
+            draw_golden_spiral(game.trigger_zone)
+            lbl = font_game.render("DRAGON LAIR", True, COLOR_ROCK)
+            screen.blit(lbl, (game.trigger_zone.x + 10, game.trigger_zone.y + 90))
+
+            # Draw Player character (gold aura in GODMODE)
+            if game.godmode:
+                pygame.draw.rect(screen, COLOR_PHI_GOLD, (game.player_x - 3, game.player_y - 3, 38, 46), 2)
+            screen.blit(hero_img, (game.player_x, game.player_y))
+
+            # HUD
+            pygame.draw.rect(screen, COLOR_UI_BG, (0, 0, SCREEN_WIDTH, 34))
+            hud = font_game.render(
+                f"HP {game.player_hp}/{game.player_max_hp}   Potions {game.player_potions}   Gold {game.player_gold}",
+                True, COLOR_TEXT)
+            screen.blit(hud, (12, 8))
+            if game.godmode:
+                g = font_game.render("GODMODE", True, COLOR_PHI_GOLD)
+                screen.blit(g, (SCREEN_WIDTH - 110, 8))
+
+            # Touch d-pad (semi-transparent, works with finger or mouse)
+            pad_surf = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+            arrows = {'up': '^', 'down': 'v', 'left': '<', 'right': '>'}
+            for name, rect in DPAD.items():
+                pygame.draw.rect(pad_surf, (28, 14, 18, 150), rect, border_radius=10)
+                pygame.draw.rect(pad_surf, (166, 114, 86, 200), rect, 2, border_radius=10)
+                t = font_big.render(arrows[name], True, COLOR_TEXT)
+                pad_surf.blit(t, t.get_rect(center=rect.center))
+            screen.blit(pad_surf, (0, 0))
+            pygame.draw.rect(screen, COLOR_PHI_GOLD if game.godmode else COLOR_UI_BORDER, GOD_RECT, border_radius=8)
+            gt = font_game.render("GOD", True, COLOR_UI_BG if game.godmode else COLOR_TEXT)
+            screen.blit(gt, gt.get_rect(center=GOD_RECT.center))
+
+        elif game.state == STATE_BATTLE:
+            screen.fill(COLOR_UI_BG)
+            # Arena
+            pygame.draw.rect(screen, COLOR_SAND_DARK, (0, 0, SCREEN_WIDTH, 300))
+            draw_golden_spiral(pygame.Rect(410, 60, 180, 180))
+            screen.blit(dragon_img, (410, 60))
+            screen.blit(hero_img, (120, 220))
+
+            # Enemy plate
+            lbl = font_game.render(game.enemy_name, True, COLOR_TEXT)
+            screen.blit(lbl, (390, 20))
+            draw_bar(390, 44, 240, 16, game.enemy_hp, game.enemy_max_hp, COLOR_HEALTH)
+            lbl = font_game.render(f"{game.enemy_hp}/{game.enemy_max_hp}", True, COLOR_TEXT)
+            screen.blit(lbl, (640, 42))
+
+            # Hero plate
+            lbl = font_game.render("HERO", True, COLOR_TEXT)
+            screen.blit(lbl, (60, 300))
+            draw_bar(60, 324, 240, 16, game.player_hp, game.player_max_hp, COLOR_HEALTH)
+            lbl = font_game.render(
+                f"{game.player_hp}/{game.player_max_hp}   Potions {game.player_potions}", True, COLOR_TEXT)
+            screen.blit(lbl, (60, 346))
+
+            # Battle options - tappable / clickable / selectable
+            battle_option_rects = []
+            for i, opt in enumerate(game.battle_options):
+                r = pygame.Rect(420, 306 + i * 44, 300, 38)
+                battle_option_rects.append(r)
+                if i == game.battle_selection:
+                    pygame.draw.rect(screen, COLOR_UI_BORDER, r, border_radius=6)
+                label = ("> " if i == game.battle_selection else "  ") + opt
+                screen.blit(font_game.render(label, True, COLOR_TEXT), (r.x + 10, r.y + 9))
+
+            if game.godmode:
+                g = font_game.render("GODMODE", True, COLOR_PHI_GOLD)
+                screen.blit(g, (60, 376))
+
+            pygame.draw.rect(screen, COLOR_PHI_GOLD if game.godmode else COLOR_UI_BORDER, GOD_RECT, border_radius=8)
+            gt = font_game.render("GOD", True, COLOR_UI_BG if game.godmode else COLOR_TEXT)
+            screen.blit(gt, gt.get_rect(center=GOD_RECT.center))
+
+            # Combat log
+            for j, line in enumerate(game.combat_log):
+                screen.blit(font_game.render(line, True, COLOR_PHI_GOLD), (60, 420 + j * 24))
+
+        elif game.state in (STATE_GAME_OVER, STATE_VICTORY):
+            screen.fill(COLOR_UI_BG)
+            if game.state == STATE_VICTORY:
+                title = font_big.render("VICTORY!", True, COLOR_PHI_GOLD)
+                msg = f"The Cave Dragon falls. Gold earned: {game.player_gold} (120 x phi)"
             else:
-                screen.blit(ruin_img, obs_rect.topleft)
+                title = font_big.render("GAME OVER", True, COLOR_HEALTH)
+                msg = "The desert keeps its secrets... this time."
+            screen.blit(title, title.get_rect(center=(SCREEN_WIDTH // 2, 170)))
+            m = font_game.render(msg, True, COLOR_TEXT)
+            screen.blit(m, m.get_rect(center=(SCREEN_WIDTH // 2, 240)))
+            pygame.draw.rect(screen, COLOR_UI_BORDER, restart_rect, border_radius=8)
+            r = font_game.render("PLAY AGAIN", True, COLOR_TEXT)
+            screen.blit(r, r.get_rect(center=restart_rect.center))
+            hint = font_game.render("ENTER / tap / controller A", True, COLOR_TEXT)
+            screen.blit(hint, hint.get_rect(center=(SCREEN_WIDTH // 2, 420)))
 
-        # Draw Lair entrance warning zone + golden spiral floor
-        pygame.draw.rect(screen, COLOR_ROCK, game.trigger_zone, 3)
-        draw_golden_spiral(game.trigger_zone)
-        lbl = font_game.render("DRAGON LAIR", True, COLOR_ROCK)
-        screen.blit(lbl, (game.trigger_zone.x + 10, game.trigger_zone.y + 90))
+        pygame.display.flip()
 
-        # Draw Player character (gold aura in GODMODE)
-        if game.godmode:
-            pygame.draw.rect(screen, COLOR_PHI_GOLD, (game.player_x - 3, game.player_y - 3, 38, 46), 2)
-        screen.blit(hero_img, (game.player_x, game.player_y))
-
-        # HUD
-        pygame.draw.rect(screen, COLOR_UI_BG, (0, 0, SCREEN_WIDTH, 34))
-        hud = font_game.render(
-            f"HP {game.player_hp}/{game.player_max_hp}   Potions {game.player_potions}   Gold {game.player_gold}",
-            True, COLOR_TEXT)
-        screen.blit(hud, (12, 8))
-        if game.godmode:
-            g = font_game.render("GODMODE", True, COLOR_PHI_GOLD)
-            screen.blit(g, (SCREEN_WIDTH - 110, 8))
-
-        # Touch d-pad (semi-transparent, works with finger or mouse)
-        pad_surf = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-        arrows = {'up': '^', 'down': 'v', 'left': '<', 'right': '>'}
-        for name, rect in DPAD.items():
-            pygame.draw.rect(pad_surf, (28, 14, 18, 150), rect, border_radius=10)
-            pygame.draw.rect(pad_surf, (166, 114, 86, 200), rect, 2, border_radius=10)
-            t = font_big.render(arrows[name], True, COLOR_TEXT)
-            pad_surf.blit(t, t.get_rect(center=rect.center))
-        screen.blit(pad_surf, (0, 0))
-        pygame.draw.rect(screen, COLOR_PHI_GOLD if game.godmode else COLOR_UI_BORDER, GOD_RECT, border_radius=8)
-        gt = font_game.render("GOD", True, COLOR_UI_BG if game.godmode else COLOR_TEXT)
-        screen.blit(gt, gt.get_rect(center=GOD_RECT.center))
-
-    elif game.state == STATE_BATTLE:
-        screen.fill(COLOR_UI_BG)
-        # Arena
-        pygame.draw.rect(screen, COLOR_SAND_DARK, (0, 0, SCREEN_WIDTH, 300))
-        draw_golden_spiral(pygame.Rect(410, 60, 180, 180))
-        screen.blit(dragon_img, (410, 60))
-        screen.blit(hero_img, (120, 220))
-
-        # Enemy plate
-        lbl = font_game.render(game.enemy_name, True, COLOR_TEXT)
-        screen.blit(lbl, (390, 20))
-        draw_bar(390, 44, 240, 16, game.enemy_hp, game.enemy_max_hp, COLOR_HEALTH)
-        lbl = font_game.render(f"{game.enemy_hp}/{game.enemy_max_hp}", True, COLOR_TEXT)
-        screen.blit(lbl, (640, 42))
-
-        # Hero plate
-        lbl = font_game.render("HERO", True, COLOR_TEXT)
-        screen.blit(lbl, (60, 300))
-        draw_bar(60, 324, 240, 16, game.player_hp, game.player_max_hp, COLOR_HEALTH)
-        lbl = font_game.render(
-            f"{game.player_hp}/{game.player_max_hp}   Potions {game.player_potions}", True, COLOR_TEXT)
-        screen.blit(lbl, (60, 346))
-
-        # Battle options - tappable / clickable / selectable
-        battle_option_rects = []
-        for i, opt in enumerate(game.battle_options):
-            r = pygame.Rect(420, 306 + i * 44, 300, 38)
-            battle_option_rects.append(r)
-            if i == game.battle_selection:
-                pygame.draw.rect(screen, COLOR_UI_BORDER, r, border_radius=6)
-            label = ("> " if i == game.battle_selection else "  ") + opt
-            screen.blit(font_game.render(label, True, COLOR_TEXT), (r.x + 10, r.y + 9))
-
-        if game.godmode:
-            g = font_game.render("GODMODE", True, COLOR_PHI_GOLD)
-            screen.blit(g, (60, 376))
-
-        pygame.draw.rect(screen, COLOR_PHI_GOLD if game.godmode else COLOR_UI_BORDER, GOD_RECT, border_radius=8)
-        gt = font_game.render("GOD", True, COLOR_UI_BG if game.godmode else COLOR_TEXT)
-        screen.blit(gt, gt.get_rect(center=GOD_RECT.center))
-
-        # Combat log
-        for j, line in enumerate(game.combat_log):
-            screen.blit(font_game.render(line, True, COLOR_PHI_GOLD), (60, 420 + j * 24))
-
-    elif game.state in (STATE_GAME_OVER, STATE_VICTORY):
-        screen.fill(COLOR_UI_BG)
-        if game.state == STATE_VICTORY:
-            title = font_big.render("VICTORY!", True, COLOR_PHI_GOLD)
-            msg = f"The Cave Dragon falls. Gold earned: {game.player_gold} (120 x phi)"
-        else:
-            title = font_big.render("GAME OVER", True, COLOR_HEALTH)
-            msg = "The desert keeps its secrets... this time."
-        screen.blit(title, title.get_rect(center=(SCREEN_WIDTH // 2, 170)))
-        m = font_game.render(msg, True, COLOR_TEXT)
-        screen.blit(m, m.get_rect(center=(SCREEN_WIDTH // 2, 240)))
-        pygame.draw.rect(screen, COLOR_UI_BORDER, restart_rect, border_radius=8)
-        r = font_game.render("PLAY AGAIN", True, COLOR_TEXT)
-        screen.blit(r, r.get_rect(center=restart_rect.center))
-        hint = font_game.render("ENTER / tap / controller A", True, COLOR_TEXT)
-        screen.blit(hint, hint.get_rect(center=(SCREEN_WIDTH // 2, 420)))
-
-    pygame.display.flip()
+if __name__ == "__main__":
+    asyncio.run(main())
