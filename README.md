@@ -1,20 +1,22 @@
-# Crimson Desert RPG — φ Edition
+# VEIL 2.0 — φ Edition
 
-A desert RPG in pure Python + pygame. Wander the sands, dodge the cacti and ruins, and walk into the Dragon Lair — if you dare. The Cave Dragon is waiting, and the desert pays its victors in golden ratio.
+An original Veil-world RPG in pure Python + pygame. Cross the Veil expanse, dodge the cacti and ruins, and walk into the Warden Lair — if you dare. The Veil Warden is waiting, and the Veil pays its victors in golden ratio.
 
-Built from Tyree's engine, completed whole, with every input the desert offers: **keyboard, touch screen, and Bluetooth / Xbox controllers.**
+*VEIL 2.0 is Tyree's original game. It was briefly published under a working title that collided with another game's name, so it was reborn under its true name: VEIL.*
+
+Built from Tyree's engine, completed whole, with every input the Veil offers: **keyboard, touch screen, and Bluetooth / Xbox controllers.**
 
 ## Run it
 
 ```bash
 pip install -r requirements.txt
-python crimson_desert_rpg.py
+python veil_2_0.py
 ```
 
 Start in GODMODE from the jump:
 
 ```bash
-python crimson_desert_rpg.py --godmode
+python veil_2_0.py --godmode
 ```
 
 ## Controls
@@ -31,19 +33,19 @@ Controllers hot-plug: pair a Bluetooth pad mid-game and it just works.
 
 ## The game
 
-- **Explore** a procedurally seeded desert (seed 42 — the layout never changes) of cacti and ruined pillars.
-- **The Dragon Lair** sits east, its floor carved with a golden spiral. Step in and the battle starts.
+- **Explore** a procedurally seeded expanse (seed 42 — the layout never changes) of cacti and ruined pillars.
+- **The Warden Lair** sits east, its floor carved with a golden spiral. Step in and the battle starts.
 - **Battle**: ATTACK, SKILLS, ITEM (Potion, +40 HP, 3 carried), DEFEND (cuts the counter to a third).
-- **Victory** pays 194 gold. **Defeat** — the desert keeps its secrets.
+- **Victory** pays 194 gold. **Defeat** — the Veil keeps its secrets.
 
 ## GODMODE
 
 Toggle it anywhere: **G**, the **GOD button**, or pad **Y**.
 
-- The Dragon's counters are absorbed — no damage, ever.
+- The Warden's counters are absorbed — no damage, ever.
 - Your damage is multiplied by φ² ≈ 2.618.
 - Potions never run out.
-- The hero wears a gold aura so the desert knows.
+- The hero wears a gold aura so the Veil knows.
 
 ## Phi, woven in as mechanics
 
@@ -62,10 +64,10 @@ Toggle it anywhere: **G**, the **GOD button**, or pad **Y**.
 | Screen height | 500 | 12.9145 | 500.000000 |
 | Tile size | 50 | 8.1295 | 50.000000 |
 | Hero HP | 100 | 9.5699 | 100.000000 |
-| Dragon HP | 120 | 9.9488 | 120.000000 |
+| Warden HP | 120 | 9.9488 | 120.000000 |
 | Potion heal | 40 | 7.6658 | 40.000000 |
 | Hero attack | 20 | 6.2254 | 20.000000 |
-| Dragon attack | 18 | 6.0064 | 18.000000 |
+| Warden attack | 18 | 6.0064 | 18.000000 |
 
 Golden angle: 222.4922°. Every rung above was computed from source and round-trip checked: φ^rung returns x exactly.
 
@@ -75,8 +77,8 @@ Golden angle: 222.4922°. Every rung above was computed from source and round-tr
 
 ## Play it on the web / Android
 
-**Play in the browser:** https://tyofthestars11-lab.github.io/crimson-desert-rpg/
+**Play in the browser:** https://tyofthestars11-lab.github.io/veil-2-0/
 
-**Install it as an Android app:** open that link in Chrome on your phone, tap the menu (three dots), then **Install app** / **Add to Home screen**. Crimson Desert lands on your home screen like any app — full screen, landscape, works offline after the first load.
+**Install it as an Android app:** open that link in Chrome on your phone, tap the menu (three dots), then **Install app** / **Add to Home screen**. VEIL 2.0 lands on your home screen like any app — full screen, landscape, works offline after the first load.
 
 On the web build, touch and keyboard carry the game; controller support rides the desktop build.

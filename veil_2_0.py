@@ -5,7 +5,7 @@ import sys
 import math
 
 # ---------------------------------------------------------
-# CRIMSON DESERT RPG - phi EDITION
+# VEIL 2.0 - phi EDITION
 # Built from Tyree's pasted engine, completed whole:
 # keyboard + touch screen + Bluetooth/Xbox controller.
 # phi woven in as mechanics, not decoration:
@@ -28,10 +28,10 @@ TILE_SIZE = 50
 PHI = (1 + math.sqrt(5)) / 2  # 1.618033988749895
 
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption("Crimson Desert RPG - phi Edition")
+pygame.display.set_caption("VEIL 2.0 - phi Edition")
 clock = pygame.time.Clock()
 
-# Colors matching the Crimson Desert palette
+# Colors of the Veil expanse palette
 COLOR_SAND = (194, 91, 61)
 COLOR_SAND_DARK = (150, 60, 40)
 COLOR_ROCK = (107, 44, 36)
@@ -123,7 +123,7 @@ class GameEngine:
         self.player_attack = 20
 
         # Enemy attributes
-        self.enemy_name = "CAVE DRAGON"
+        self.enemy_name = "VEIL WARDEN"
         self.enemy_hp = 120
         self.enemy_max_hp = 120
         self.enemy_attack = 18
@@ -136,9 +136,9 @@ class GameEngine:
         # UI Selection Index
         self.battle_selection = 0
         self.battle_options = ["ATTACK", "SKILLS", "ITEM (Potion)", "DEFEND"]
-        self.combat_log = ["A wild CAVE DRAGON appears!", "The ground trembles..."]
+        self.combat_log = ["A wild VEIL WARDEN appears!", "The ground trembles..."]
 
-        # Generate Procedural Desert Map
+        # Generate Procedural Veil Expanse Map
         self.map_width = SCREEN_WIDTH // TILE_SIZE
         self.map_height = SCREEN_HEIGHT // TILE_SIZE
         self.obstacles = []
@@ -150,7 +150,7 @@ class GameEngine:
         random.seed(42)  # Keep consistent layout
         for r in range(self.map_height):
             for c in range(self.map_width):
-                # Don't spawn objects right at start or inside dragon lair
+                # Don't spawn objects right at start or inside warden lair
                 rect = pygame.Rect(c*TILE_SIZE, r*TILE_SIZE, TILE_SIZE, TILE_SIZE)
                 if rect.collidelist([pygame.Rect(50,150,150,150), self.trigger_zone]) == -1:
                     if random.random() < 0.12:
@@ -171,7 +171,7 @@ class GameEngine:
             if self.godmode:
                 dmg = int(dmg * PHI * PHI)
             self.enemy_hp -= dmg
-            self.log_message(f"You slash the Dragon for {dmg} damage!")
+            self.log_message(f"You slash the Warden for {dmg} damage!")
         elif action == "SKILLS":
             step = fib(self.phi_step)
             self.phi_step += 1
@@ -202,13 +202,13 @@ class GameEngine:
 
         # Enemy counter-attack - GODMODE absorbs every blow
         if self.godmode:
-            self.log_message("GODMODE absorbs the Dragon's blow!")
+            self.log_message("GODMODE absorbs the Warden's blow!")
             return
         enemy_dmg = random.randint(self.enemy_attack - 3, self.enemy_attack + 4)
         if action == "DEFEND":
             enemy_dmg = max(1, enemy_dmg // 3)
         self.player_hp -= enemy_dmg
-        self.log_message(f"Cave Dragon counters for {enemy_dmg} damage!")
+        self.log_message(f"Veil Warden counters for {enemy_dmg} damage!")
 
         # Check Lose Condition
         if self.player_hp <= 0:
@@ -436,7 +436,7 @@ async def main():
                 game.player_x += dx
                 game.player_y += dy
 
-            # Trigger Lair Boss Arena
+            # Trigger Warden Boss Arena
             if new_rect.colliderect(game.trigger_zone):
                 game.state = STATE_BATTLE
 
@@ -457,10 +457,10 @@ async def main():
                 else:
                     screen.blit(ruin_img, obs_rect.topleft)
 
-            # Draw Lair entrance warning zone + golden spiral floor
+            # Draw Warden lair entrance warning zone + golden spiral floor
             pygame.draw.rect(screen, COLOR_ROCK, game.trigger_zone, 3)
             draw_golden_spiral(game.trigger_zone)
-            lbl = font_game.render("DRAGON LAIR", True, COLOR_ROCK)
+            lbl = font_game.render("WARDEN LAIR", True, COLOR_ROCK)
             screen.blit(lbl, (game.trigger_zone.x + 10, game.trigger_zone.y + 90))
 
             # Draw Player character (gold aura in GODMODE)
@@ -540,10 +540,10 @@ async def main():
             screen.fill(COLOR_UI_BG)
             if game.state == STATE_VICTORY:
                 title = font_big.render("VICTORY!", True, COLOR_PHI_GOLD)
-                msg = f"The Cave Dragon falls. Gold earned: {game.player_gold} (120 x phi)"
+                msg = f"The Veil Warden falls. Gold earned: {game.player_gold} (120 x phi)"
             else:
                 title = font_big.render("GAME OVER", True, COLOR_HEALTH)
-                msg = "The desert keeps its secrets... this time."
+                msg = "The Veil keeps its secrets... this time."
             screen.blit(title, title.get_rect(center=(SCREEN_WIDTH // 2, 170)))
             m = font_game.render(msg, True, COLOR_TEXT)
             screen.blit(m, m.get_rect(center=(SCREEN_WIDTH // 2, 240)))
