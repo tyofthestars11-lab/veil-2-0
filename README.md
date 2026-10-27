@@ -79,6 +79,4 @@ Golden angle: 222.4922°. Every rung above was computed from source and round-tr
 
 **Install it as an Android app:** open that link in Chrome on your phone, tap the menu (three dots), then **Install app** / **Add to Home screen**. Crimson Desert lands on your home screen like any app — full screen, landscape, works offline after the first load.
 
-**Android package:** `webbuild.apk` ships inside the web build (in the repo's `docs/` folder) for sideloading.
-
 On the web build, touch and keyboard carry the game; controller support rides the desktop build.
